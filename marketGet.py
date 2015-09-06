@@ -2,6 +2,8 @@ from lxml import html
 import requests, csv, urllib2
 
 
+csvList = dict()
+
 def getTickers(url):
 	nextURL = url
 	tickers = []
@@ -20,19 +22,41 @@ def getTickers(url):
 		# print 'nextURL: ', nextURL
 	return tickers
 
-# tickers = getTickers(['screener.ashx?v=111&f=cap_midover,fa_ltdebteq_u1,fa_roa_o5,fa_roe_o15,fa_sales5years_o15,ipodate_more10&ft=4&o=price'])
-
-# print 'All tickers list: ', tickers
-
-def getFCFRate(ticker):
+def getCSV (ticker):
+	if ticker in csvList:
+		return csvList[ticker]['csv']
 	url = 'http://financials.morningstar.com/ajax/exportKR2CSV.html?callback=?&t=' + ticker
 	response = urllib2.urlopen(url)
-	cr = csv.reader(response)
+	cr = list(csv.reader(response))
+	csvList[ticker] = {'csv': cr}
+	return cr
 
-	for row in cr:
-		print row
-		if row and row[0] == 'Free Cash Flow USD Mil':
-			print row[1:]
-		if row and row[0] = 'Revenue %':
-			cr
-getFCFRate('INTC')
+def getAverage(ticker, line):
+	cr = getCSV(ticker)
+	fcf = cr[line]
+	# print atof('123,456') 
+	fcf = [s.replace(',','') for s in fcf] # ',' -> ''
+	# print fcf
+	fcf = filter(None, fcf[1:])
+	fcfLength = len(fcf)
+	if fcfLength > 5:
+		fcf = map(float, fcf)
+		# print fcf
+		avgRate = sum(fcf) / float(fcfLength)
+	return avgRate
+
+ticker = 'AAPL'
+csvList[ticker] = {'fcf': int(getAverage(ticker, 15)),
+					'grossMargin': getAverage(ticker, 23),
+					'fcfGrowth': getAverage(ticker, 67),
+					'fcfPsales': getAverage(ticker, 69)}
+
+
+w = csv.writer(open("output.csv", "w"))
+for key, val in csvList.items():
+    w.writerow([key, val])
+# print 'Free Cash Flow USD Mil: ', int(getAverage('AAPL', 15))
+# print 'Gross Margin: ', getAverage('AAPL', 23)
+# print 'Free Cash Flow Growth % YOY: ', getAverage('AAPL', 67)
+# print 'Free Cash Flow/Sales %: ', getAverage('AAPL', 69)
+
