@@ -5,15 +5,15 @@ import Quandl
 # print mydata.head()
 
 # input about stock
-numShares = 4952
-fcfGrowth = 0.05
-discountRate = 0.10
+numShares = 9.32
+fcfGrowth = 0.03
+discountRate = 0.20
 perGrowthRate = 0.03
 
 numYears = 10
 
 fcfPrediction = [0]*(numYears + 1)
-fcfPrediction[0] = 10847 # current year fcf
+fcfPrediction[0] = 233.3 # current year fcf
 discountedSum = 0
 
 for i in range(1,(numYears + 1)):

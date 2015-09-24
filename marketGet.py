@@ -1,6 +1,6 @@
 from lxml import html
-import requests, csv, urllib2
-
+import requests, csv, urllib2, json
+from operator import itemgetter
 
 csvList = dict()
 
@@ -29,10 +29,14 @@ def getCSV (ticker):
 	response = urllib2.urlopen(url)
 	cr = list(csv.reader(response))
 	csvList[ticker] = {'csv': cr}
+	if len(cr) < 111:
+		return -1
 	return cr
 
 def getAverage(ticker, line):
 	cr = getCSV(ticker)
+	if cr == -1 or line >= len(cr):
+		return 0
 	fcf = cr[line]
 	# print atof('123,456') 
 	fcf = [s.replace(',','') for s in fcf] # ',' -> ''
@@ -43,18 +47,50 @@ def getAverage(ticker, line):
 		fcf = map(float, fcf)
 		# print fcf
 		avgRate = sum(fcf) / float(fcfLength)
-	return avgRate
+		return avgRate
+	return 0
 
-ticker = 'AAPL'
-csvList[ticker] = {'fcf': int(getAverage(ticker, 15)),
-					'grossMargin': getAverage(ticker, 23),
-					'fcfGrowth': getAverage(ticker, 67),
-					'fcfPsales': getAverage(ticker, 69)}
+def getMin(ticker, line):
+	cr = getCSV(ticker)
+	if cr == -1 or line >= len(cr):
+		return 0
+	fcf = cr[line]
+	fcf = [s.replace(',','') for s in fcf] # ',' -> ''
+	fcf = filter(None, fcf[1:])
+	fcf = map(float, fcf)
+	return min(fcf)
 
+def saveToCSV(startingURL):
+	tickers = getTickers(startingURL)
+	print tickers
+	for ticker in tickers:
+		csvList[ticker] = {'fcf': int(getAverage(ticker, 15)),
+							'grossMargin': getAverage(ticker, 23),
+							'fcfGrowth': getAverage(ticker, 67),
+							'fcfPsales': getAverage(ticker, 69),
+							'minROE': getMin(ticker, 37),
+							'epsRate': getAverage(ticker, 62)}
+	with open('data.json', 'w') as fp:
+		json.dump(csvList, fp)
+	print 'Done!:', len(csvList), 'stocks'
+
+saveToCSV(['screener.ashx?v=111&f=fa_pe_low,sh_insidertrans_verypos&ft=4'])
+
+with open('data.json', 'r') as fp:
+    csvList = json.load(fp)
 
 w = csv.writer(open("output.csv", "w"))
-for key, val in csvList.items():
-    w.writerow([key, val])
+
+w.writerow(['Ticker', 'fcfGrowth', 'fcfPsales', 'fcf', 'grossMargin', 'minROE', 'epsRate'])
+for k in csvList:
+	w.writerow([k, csvList[k]['fcfGrowth'],
+		csvList[k]['fcfPsales'],
+		csvList[k]['fcf'],
+		csvList[k]['grossMargin'], 
+		csvList[k]['minROE'],
+		csvList[k]['epsRate']])
+# mylist = sorted(csvList, key=itemgetter('fcfGrowth', 'fcfPsales', 'fcf'))
+
 # print 'Free Cash Flow USD Mil: ', int(getAverage('AAPL', 15))
 # print 'Gross Margin: ', getAverage('AAPL', 23)
 # print 'Free Cash Flow Growth % YOY: ', getAverage('AAPL', 67)
